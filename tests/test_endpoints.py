@@ -19,3 +19,11 @@ def test_upload_invalid_csv():
     response = client.post("/upload", files=files)
     assert response.status_code == 400
     assert "Missing one or more required columns" in response.json()["detail"]
+
+def test_upload_non_csv_file():
+    txt_content = "some,text,data"
+    files = {"file": ("test.txt", txt_content, "text/plain")}
+    response = client.post("/upload", files=files)
+    assert response.status_code == 400
+    # Change the string to match the exact error message
+    assert "Invalid file type. Only CSV files are allowed." in response.json()["detail"]
