@@ -1,6 +1,6 @@
-from fastapi import FastAPI
+
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-import os
 
 from app.routes.upload import router as upload_router
 # from app.routes.process import router as process_router
@@ -9,12 +9,10 @@ from app.routes.upload import router as upload_router
 
 app = FastAPI(title="Basket Intent Demo")
 
-# Allow requests from the frontend dev server(s)
+# Allow CORS for frontend (adjust origins as needed)
 origins = [
-	"http://localhost:3000",
-	"http://127.0.0.1:3000",
+	"http://localhost:3000"
 ]
-
 app.add_middleware(
 	CORSMiddleware,
 	allow_origins=origins,
@@ -26,11 +24,3 @@ app.add_middleware(
 app.include_router(upload_router)
 # app.include_router(process_router)
 # app.include_router(powerbi_router)
-
-
-if __name__ == "__main__":
-	# Allow overriding the port with the PORT env var; default to 8080 to match the frontend
-	port = int(os.environ.get("PORT", 8080))
-	import uvicorn
-
-	uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
