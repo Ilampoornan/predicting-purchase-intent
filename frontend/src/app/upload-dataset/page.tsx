@@ -48,7 +48,7 @@ export default function UploadDataset() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#2d0b3a] via-[#3c1a5b] to-[#1a0824]">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c]">
       <div
         className="rounded-2xl shadow-lg backdrop-blur-md bg-gradient-to-br from-[#3c1a5b]/80 to-[#2d0b3a]/80 border border-[#a259e6]/40 p-10 w-full max-w-xl relative"
         style={{ boxShadow: "0 8px 32px 0 rgba(162, 89, 230, 0.25)" }}
@@ -80,7 +80,7 @@ export default function UploadDataset() {
           <span className="text-[#00e6e6] font-medium mb-1">
             {fileName ? fileName : "Drag & drop or click to upload"}
           </span>
-          <span className="text-xs text-[#b0b3b8]">Supported: CSV, Excel</span>
+          <span className="text-xs text-[#b0b3b8]">Supported type: CSV</span>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">

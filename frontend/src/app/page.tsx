@@ -14,7 +14,7 @@ export default function Home() {
   const days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu"];
   const dates = [10, 11, 12, 13, 14, 15];
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-[#2d0b3a] via-[#3c1a5b] to-[#1a0824]">
+    <div className="flex min-h-screen bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c]">
       <main className="flex-1 p-4 md:p-8 overflow-x-auto">
         <h1 className="text-4xl font-extrabold text-center text-[#00e6e6] mb-8 tracking-tight drop-shadow-lg">
           Intent Miner
@@ -144,11 +144,9 @@ export default function Home() {
                     October 2025
                   </span>
                   <div className="flex gap-2">
-                 
                     <button className="px-2 py-1 rounded bg-[#a259e6]/60 text-[#fff]">
                       Month
                     </button>
-                    
                   </div>
                 </div>
                 <div className="grid grid-cols-7 gap-2 mb-2">

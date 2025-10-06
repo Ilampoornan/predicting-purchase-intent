@@ -39,15 +39,17 @@ const sidebarItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="w-64 bg-gradient-to-b from-[#2d0b3a] via-[#3c1a5b] to-[#1a0824] border-r border-[#23283a] min-h-screen flex flex-col py-6 shadow-xl">
+    <aside className="w-64 bg-gradient-to-b from-[#190621] to-[#090523] border-r border-[#23283a] min-h-screen flex flex-col py-6 shadow-xl">
       <div className="flex flex-col items-center mb-8">
         <span className="text-2xl font-extrabold text-[#ffffff] tracking-wide mb-2">
           Dashboard
         </span>
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a259e6] to-[#23283a] flex items-center justify-center text-white mb-2">
-          <span role="img" aria-label="user" className="text-2xl">
-            🛒
-          </span>
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a259e6] to-[#23283a] flex items-center justify-center text-white mb-2 overflow-hidden">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="w-10 h-10 object-contain"
+          />
         </div>
         <span className="text-xs text-[#b0b3b8]">IntentMiner</span>
       </div>
@@ -72,7 +74,6 @@ export default function Sidebar() {
             );
           })}
         </ul>
-       
       </nav>
     </aside>
   );

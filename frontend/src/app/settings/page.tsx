@@ -32,7 +32,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2d0b3a] via-[#3c1a5b] to-[#1a0824] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c] flex items-center justify-center p-6">
       <div className="w-full max-w-xl rounded-2xl p-10 shadow-lg bg-gradient-to-br from-[#3c1a5b]/80 to-[#2d0b3a]/80 border border-[#a259e6]/40 backdrop-blur-md">
         <h2 className="text-3xl font-extrabold text-center text-[#00e6e6] mb-8 drop-shadow-lg">
           Settings
