@@ -1,12 +1,65 @@
 "use client";
 
 import React, { useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function Login() {
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    });
+    if (error) {
+      setLoading(false);
+      setError(error.message);
+    } else {
+      // Show spinner for 1s before navigating
+      setTimeout(() => {
+        setLoading(false);
+        router.push("/");
+      }, 1000);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <svg
+          className="animate-spin h-12 w-12 text-[#a259e6]"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          />
+        </svg>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -18,10 +71,10 @@ export default function Login() {
         <div className="mb-8 flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#2b193c] to-[#23283a] flex items-center justify-center">
             <img
-            src="/logo.png"
-            alt="Logo"
-            className="w-10 h-10 object-contain"
-          />
+              src="/logo.png"
+              alt="Logo"
+              className="w-10 h-10 object-contain"
+            />
           </div>
           <span className="text-2xl font-bold text-white tracking-wide">
             IntentMiner
@@ -44,7 +97,7 @@ export default function Login() {
           <h3 className="text-center text-white/80 text-lg mb-6 tracking-widest">
             WELCOME BACK EXCLUSIVE MEMBER
           </h3>
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleLogin}>
             <div>
               <div className="flex items-center bg-white/10 rounded-md px-3">
                 <svg
@@ -98,11 +151,15 @@ export default function Login() {
               </div>
             </div>
             <button
-              type="button"
-              className="w-full py-3 mt-2 rounded bg-black/80 text-white font-bold text-lg shadow-md hover:bg-black transition"
+              type="submit"
+              className="w-full py-3 mt-2 rounded bg-black/80 text-white font-bold text-lg shadow-md hover:bg-black transition disabled:opacity-60"
+              disabled={loading}
             >
-              Proceed to My Account
+              {loading ? "Logging In..." : "Proceed to My Account"}
             </button>
+            {error && (
+              <p className="text-red-300 text-center text-xs mt-2">{error}</p>
+            )}
           </form>
           <p className="text-center text-white/80 text-xs mt-6">
             Not a member?{" "}

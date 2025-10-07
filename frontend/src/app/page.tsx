@@ -10,9 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 export default function Home() {
-  const [selectedDate, setSelectedDate] = useState<string>("2025-10-10");
-  const days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu"];
-  const dates = [10, 11, 12, 13, 14, 15];
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c]">
       <main className="flex-1 p-4 md:p-8 overflow-x-auto">
@@ -164,7 +162,7 @@ export default function Home() {
                 <div className="grid grid-cols-7 gap-2">
                   {[...Array(31)].map((_, i) => {
                     const date = i + 1;
-                    const isActive = [5].includes(date);
+                    const isActive = [7].includes(date);
                     return (
                       <button
                         key={date}
