@@ -6,12 +6,21 @@ export default function Visualizations() {
         className="rounded-2xl shadow-lg border-4 border-[#a259e6] bg-[#23283a]/80 p-6"
         style={{ boxShadow: "0 8px 32px 0 rgba(162, 89, 230, 0.25)" }}
       >
-        <iframe
+        {/* <iframe
           width="900"
           height="600"
           src="https://lookerstudio.google.com/embed/reporting/94a32404-94cf-4ad7-9323-60baa3e9b8e7/page/GAcaF"
           frameBorder="0"
           style={{ border: 0, borderRadius: "1rem", background: "#23283a" }}
+          allowFullScreen
+          sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        ></iframe> */}
+        <iframe
+          width="600"
+          height="450"
+          src="https://lookerstudio.google.com/embed/reporting/5841b56f-c70e-4aba-8bbb-49c8bcd2457f/page/GPoaF"
+          frameBorder="0"
+          style={{ border: 0 }}
           allowFullScreen
           sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         ></iframe>

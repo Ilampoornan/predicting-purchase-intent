@@ -1,14 +1,34 @@
 "use client";
-
-import React from "react";
+import React, { useEffect } from "react";
 import { useRef, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 
 export default function UploadDataset() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [status, setStatus] = useState<string>("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [uploadComplete, setUploadComplete] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Restore upload state from localStorage on mount
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data?.user?.id || null);
+    };
+    getUser();
+    // Restore upload state
+    const saved = localStorage.getItem("uploadState");
+    if (saved) {
+      const { fileName, progress, status, uploadComplete } = JSON.parse(saved);
+      setFileName(fileName);
+      setProgress(progress);
+      setStatus(status);
+      setUploadComplete(uploadComplete);
+    }
+  }, []);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -20,24 +40,61 @@ export default function UploadDataset() {
     setFileName(file.name);
     setStatus("Uploading...");
     setProgress(0);
+    // Save state to localStorage
+    localStorage.setItem(
+      "uploadState",
+      JSON.stringify({
+        fileName: file.name,
+        progress: 0,
+        status: "Uploading...",
+        uploadComplete: false,
+      })
+    );
+    if (!userId) {
+      setStatus("User not authenticated. Please log in.");
+      setProgress(0);
+      localStorage.removeItem("uploadState");
+      console.log("DEBUG: userId is not set");
+      return;
+    }
+    console.log("DEBUG: userId before upload", userId);
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("user_id", userId);
+    // Log FormData keys for debugging
+    for (let pair of formData.entries()) {
+      console.log(`FormData field: ${pair[0]} = ${pair[1]}`);
+    }
     try {
       const res = await fetch("http://localhost:8000/upload", {
         method: "POST",
         body: formData,
       });
       if (res.ok) {
-  const data = await res.json();
-  setStatus(`Upload complete! Rows: ${data.rows}, Columns: ${data.columns}`);
-  setProgress(100);
+        const data = await res.json();
+        setStatus(
+          `Upload complete! Rows: ${data.rows}, Columns: ${data.columns}`
+        );
+        setProgress(100);
+        setUploadComplete(true);
+        localStorage.setItem(
+          "uploadState",
+          JSON.stringify({
+            fileName: file.name,
+            progress: 100,
+            status: `Upload complete! Rows: ${data.rows}, Columns: ${data.columns}`,
+            uploadComplete: true,
+          })
+        );
       } else {
         setStatus("Upload failed.");
         setProgress(0);
+        localStorage.removeItem("uploadState");
       }
     } catch (err) {
       setStatus("Upload failed.");
       setProgress(0);
+      localStorage.removeItem("uploadState");
     }
   };
 
@@ -62,10 +119,13 @@ export default function UploadDataset() {
           style={{
             boxShadow: "0 4px 16px 0 rgba(162, 89, 230, 0.10)",
             border: "2px dashed #a259e6",
+            ...(uploadComplete ? { opacity: 0.5, pointerEvents: "none" } : {}),
           }}
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onClick={() => fileInput.current?.click()}
+          onDrop={uploadComplete ? undefined : handleDrop}
+          onDragOver={uploadComplete ? undefined : (e) => e.preventDefault()}
+          onClick={
+            uploadComplete ? undefined : () => fileInput.current?.click()
+          }
         >
           <input
             type="file"
@@ -73,6 +133,7 @@ export default function UploadDataset() {
             className="hidden"
             onChange={handleChange}
             accept=".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+            disabled={uploadComplete}
           />
           <div className="mb-2">
             <Image src="/cloud.png" alt="Upload" width={48} height={48} />
@@ -95,6 +156,20 @@ export default function UploadDataset() {
           </div>
           <div className="text-right text-xs text-[#a259e6] mt-1">{status}</div>
         </div>
+        {uploadComplete && (
+          <button
+            className="mt-6 w-full py-2 rounded-lg bg-[#a259e6] text-white font-semibold hover:bg-[#7c3aed] transition"
+            onClick={() => {
+              setFileName(null);
+              setProgress(0);
+              setStatus("");
+              setUploadComplete(false);
+              localStorage.removeItem("uploadState");
+            }}
+          >
+            Upload a New Dataset
+          </button>
+        )}
       </div>
     </div>
   );
