@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.upload import router as upload_router
-from app.routes.mining import router as mining_router  # 👈 added this line
+from app.routes.intent import router as intent_router
+# from app.routes.powerbi import router as powerbi_router
+
 
 app = FastAPI(title="Basket Intent Demo")
 
@@ -20,4 +22,5 @@ app.add_middleware(
 
 # ✅ Register routers
 app.include_router(upload_router)
-app.include_router(mining_router)  # 👈 added this line too
+app.include_router(intent_router)
+# app.include_router(powerbi_router)
