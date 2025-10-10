@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, HTTPException, status, Form
 from io import BytesIO
 import pandas as pd
 from google.cloud import bigquery
@@ -50,8 +50,13 @@ SCHEMA = [
 ]
 
 
+from fastapi import Form
+
 @router.post("/upload", response_model=UploadResult)
-async def upload_csv(file: UploadFile = File(...)):
+async def upload_csv(file: UploadFile = File(...), user_id: str = Form(None)):
+    print(f"DEBUG: Received user_id={user_id}, file={file.filename if file else None}")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required in the form data.")
     # --- Step 1: Validate file type ---
     if not file.filename or not file.filename.endswith(".csv"):
         raise HTTPException(
@@ -91,7 +96,7 @@ async def upload_csv(file: UploadFile = File(...)):
 
     # --- Step 3: Fetch last dataset_id from BigQuery ---
     try:
-        query = f"SELECT MAX(dataset_id) AS last_id FROM `{TABLE_ID}`"
+        query = f"SELECT MAX(dataset_id) AS last_id FROM {TABLE_ID}"
         query_job = bq_client.query(query)
         result = query_job.result()
         last_id = next(result).last_id or 0
@@ -104,6 +109,45 @@ async def upload_csv(file: UploadFile = File(...)):
 
     # --- Step 4: Assign new dataset_id ---
     df["dataset_id"] = new_dataset_id
+
+    # --- Step 4b: Insert new dataset record into Data Set table ---
+    # You may need to adjust how you get user_id depending on your auth system
+    from fastapi import Request, Depends
+    from fastapi.security import OAuth2PasswordBearer
+    # user_id is now received from the frontend form
+    DATASET_TABLE_ID = "pivotal-canto-466205-p6.intent_inference.Data sets"
+    dataset_row = [{
+        "dataset_id": new_dataset_id,
+        "Client_id": user_id,
+        "num of rows": len(df)
+    }]
+    # Convert to DataFrame and upload
+    dataset_df = pd.DataFrame(dataset_row)
+    dataset_json = dataset_df.to_json(orient="records", lines=True)
+    dataset_schema = [
+        bigquery.SchemaField("dataset_id", "INTEGER", mode="NULLABLE"),
+        bigquery.SchemaField("Client_id", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("num of rows", "INTEGER", mode="NULLABLE"),
+    ]
+    try:
+        dataset_job_config = bigquery.LoadJobConfig(
+            source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+            schema=dataset_schema,
+            write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+        )
+        dataset_load_job = bq_client.load_table_from_file(
+            BytesIO(dataset_json.encode("utf-8")),
+            DATASET_TABLE_ID,
+            job_config=dataset_job_config,
+        )
+        dataset_load_job.result()
+        print(f"Added dataset_id={new_dataset_id} for user_id={user_id} to Data sets table")
+    except Exception as e:
+        print(f"Failed to add to Data sets table:", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add dataset record: {e}"
+        )
 
     # --- Step 5: Convert to JSON ---
     try:
