@@ -44,27 +44,7 @@ export default function ProfilePage() {
                 </span>
               </div>
             </div>
-            {/* Stats Box */}
-            <div className="glass-box grid grid-cols-3 gap-6 p-6 text-center">
-              <div>
-                <span className="block text-lg font-bold text-white">
-                  {user.user_metadata?.years_experience || "-"}
-                </span>
-                <span className="block text-xs text-white/60">Years</span>
-              </div>
-              <div>
-                <span className="block text-lg font-bold text-white">
-                  {user.user_metadata?.clients || "-"}
-                </span>
-                <span className="block text-xs text-white/60">Clients</span>
-              </div>
-              <div>
-                <span className="block text-lg font-bold text-white">
-                  {user.user_metadata?.sales || "-"}
-                </span>
-                <span className="block text-xs text-white/60">Sales</span>
-              </div>
-            </div>
+         
             {/* About Box */}
             <div className="glass-box p-8">
               <h3 className="text-lg font-bold text-[#a259e6] mb-2">About</h3>
@@ -120,14 +100,7 @@ export default function ProfilePage() {
                 >
                   <FaFacebook />
                 </a>
-                <a
-                  href={user.user_metadata?.twitter || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-[#00e6e6] text-[#a259e6]"
-                >
-                  <FaTwitter />
-                </a>
+                
                 <a
                   href={user.user_metadata?.linkedin || "#"}
                   target="_blank"

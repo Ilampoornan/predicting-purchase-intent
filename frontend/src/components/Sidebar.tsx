@@ -12,6 +12,7 @@ import {
   DocumentArrowUpIcon,
   LightBulbIcon,
   UserIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 const sidebarItems = [
@@ -25,6 +26,12 @@ const sidebarItems = [
     label: "Visualizations",
     href: "/visualizations",
     icon: <ChartBarIcon className="h-5 w-5" />,
+  },
+  // New Infer Intents option
+  {
+    label: "Infer Intents",
+    href: "/infer-intents",
+    icon: <SparklesIcon className="h-5 w-5" />,
   },
   {
     label: "Insights & Suggestions",
@@ -55,8 +62,13 @@ export default function Sidebar() {
 
   const [loggingOut, setLoggingOut] = useState(false);
   const handleLogout = async () => {
-    setLoggingOut(true);
     await supabase.auth.signOut();
+    setLoggingOut(true);
+    console.log("Logging out and clearing localStorage");
+    localStorage.removeItem("uploadState");
+    localStorage.removeItem("rfmClusters");
+    localStorage.removeItem("rfmInterpretation");
+    
     setTimeout(() => {
       setLoggingOut(false);
       router.push("/login");
@@ -100,7 +112,7 @@ export default function Sidebar() {
     <aside className="w-64 bg-gradient-to-b from-[#190621] to-[#090523] border-r border-[#23283a] min-h-screen flex flex-col py-6 shadow-xl">
       <div className="flex flex-col items-center mb-8">
         <span className="text-2xl font-extrabold text-[#ffffff] tracking-wide mb-2">
-          Dashboard
+          IntentMiner
         </span>
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a259e6] to-[#23283a] flex items-center justify-center text-white mb-2 overflow-hidden">
           <img
@@ -109,7 +121,6 @@ export default function Sidebar() {
             className="w-10 h-10 object-contain"
           />
         </div>
-        <span className="text-xs text-[#b0b3b8]">IntentMiner</span>
       </div>
       <nav className="flex-1 w-full">
         <ul className="flex flex-col gap-1 w-full px-2">

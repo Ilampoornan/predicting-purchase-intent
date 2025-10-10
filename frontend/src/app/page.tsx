@@ -1,15 +1,26 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import {
   ChartBarIcon,
   DocumentArrowUpIcon,
-  Cog6ToothIcon,
+  UserIcon,
   LightBulbIcon,
 } from "@heroicons/react/24/outline";
 
 export default function Home() {
+  // Get today's date
+  const today = new Date();
+  const currentDay = today.getDate();
+  const currentMonth = today.getMonth(); // 0-indexed
+  const currentYear = today.getFullYear();
+
+  // For this demo, calendar is always October 2025
+  const calendarMonth = 9; // October (0-indexed)
+  const calendarYear = 2025;
+
+  const highlightToday =
+    currentMonth === calendarMonth && currentYear === calendarYear;
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c]">
@@ -68,10 +79,10 @@ export default function Home() {
             <GlassCard>
               <div className="flex flex-col gap-2 cursor-pointer hover:scale-105 transition-transform">
                 <span className="text-xs text-[#ffffff] font-bold">
-                  SETTINGS
+                  PROFILE
                 </span>
                 <span className="text-2xl font-bold text-[#a259e6]">
-                  <Cog6ToothIcon className="h-8 w-8 mt-2" />
+                  <UserIcon className="h-8 w-8 mt-2" />
                 </span>
                 <span className="text-sm text-[#ffffff]">
                   Customize your preferences and configurations.
@@ -162,12 +173,13 @@ export default function Home() {
                 <div className="grid grid-cols-7 gap-2">
                   {[...Array(31)].map((_, i) => {
                     const date = i + 1;
-                    const isActive = [7].includes(date);
+                    // Highlight today if in October 2025, else nothing special
+                    const isToday = highlightToday && date === currentDay;
                     return (
                       <button
                         key={date}
                         className={`rounded-full w-8 h-8 flex items-center justify-center font-semibold transition border-2 ${
-                          isActive
+                          isToday
                             ? "bg-[#00e6e6] border-[#00e6e6] text-[#23283a] shadow-lg"
                             : "bg-[#23283a]/60 border-[#44475a] text-[#b0b3b8] hover:bg-[#a259e6]/30 hover:text-[#f8f6f0]"
                         }`}
