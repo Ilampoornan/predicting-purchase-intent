@@ -91,46 +91,16 @@ export default function Home() {
             </GlassCard>
           </Link>
         </div>
-        {/* Sales Datasets & Calendar Row */}
+        {/* World Map & Calendar Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
           <GlassCard>
-            <div className="flex flex-col gap-4">
-              <span className="text-lg font-bold text-[#00e6e6] mb-2">
-                Popular Sales Datasets
-              </span>
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href="https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-lg bg-[#23283a]/80 text-[#c9b2de] font-semibold border border-[#a259e6]/40 hover:bg-[#a259e6]/30 transition"
-                >
-                  Instacart Market Basket Analysis
-                </a>
-                <a
-                  href="https://www.kaggle.com/datasets/shreyanshverma27/online-sales-dataset-popular-marketplace-data"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-lg bg-[#23283a]/80 text-[#f8f6f0] font-semibold border border-[#a259e6]/40 hover:bg-[#a259e6]/30 transition"
-                >
-                  Online Sales Dataset - Popular Marketplace Data
-                </a>
-                <a
-                  href="https://www.kaggle.com/datasets/prasad22/retail-transactions-dataset"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-lg bg-[#23283a]/80 text-[#c9b2de] font-semibold border border-[#a259e6]/40 hover:bg-[#a259e6]/30 transition"
-                >
-                  Online Retail Transactions Dataset
-                </a>
-                <a
-                  href="https://www.kaggle.com/datasets/raosuny/e-commerce-purchase-dataset"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-lg bg-[#23283a]/80 text-[#f8f6f0] font-semibold border border-[#a259e6]/40 hover:bg-[#a259e6]/30 transition"
-                >
-                  E commerce Purchase Dataset
-                </a>
+            <div className="flex flex-col gap-4 items-start h-full">
+              <div className="w-full h-64 md:h-80 lg:h-85 flex justify-center items-center">
+                <img
+                  src="/worldmap.png"
+                  alt="World Map"
+                  className="w-full h-full object-cover rounded-xl"
+                />
               </div>
             </div>
           </GlassCard>
