@@ -1,3 +1,5 @@
+# Google Cloud credentials
+service-account-key.json
 # Python virtual environments
 venv/
 .env/
@@ -30,3 +32,4 @@ htmlcov/
 
 # Environment variables
 .env
+

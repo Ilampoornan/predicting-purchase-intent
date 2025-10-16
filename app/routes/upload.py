@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, HTTPException, status, Form
 from io import BytesIO
 import pandas as pd
 from google.cloud import bigquery
@@ -32,31 +32,15 @@ SCHEMA = [
 ]
 
 
-def parse_products_column(value):
-    """Convert various 'products' formats to list."""
-    if pd.isna(value) or value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    value = str(value).strip()
-    if not value:
-        return []
-    if value.startswith("[") and value.endswith("]"):
-        try:
-            return ast.literal_eval(value)
-        except Exception:
-            pass
-    return [item.strip() for item in value.split(",") if item.strip()]
-
+from fastapi import Form
 
 @router.post("/upload", response_model=UploadResult)
-async def upload_csvs(files: list[UploadFile] = File(...)):
-    """
-    Upload 3 CSVs: orders.csv, order_products.csv, products.csv
-    Combine by order_id → flatten → upload to BigQuery.
-    """
-
-    if len(files) != 3:
+async def upload_csv(file: UploadFile = File(...), user_id: str = Form(None)):
+    print(f"DEBUG: Received user_id={user_id}, file={file.filename if file else None}")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required in the form data.")
+    # --- Step 1: Validate file type ---
+    if not file.filename or not file.filename.endswith(".csv"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Please upload exactly 3 CSV files: orders, order_products, and products."
@@ -112,22 +96,63 @@ async def upload_csvs(files: list[UploadFile] = File(...)):
 
     # --- Get next dataset_id ---
     try:
-        query = f"SELECT MAX(dataset_id) AS last_id FROM `{TABLE_ID}`"
-        result = list(bq_client.query(query).result())
-        last_id = result[0].last_id or 0
+        query = f"SELECT MAX(dataset_id) AS last_id FROM {TABLE_ID}"
+        query_job = bq_client.query(query)
+        result = query_job.result()
+        last_id = next(result).last_id or 0
         new_dataset_id = int(last_id) + 1
     except Exception as e:
         raise HTTPException(500, f"Failed to fetch last dataset_id: {e}")
 
     final_df["dataset_id"] = new_dataset_id
 
-    # Ensure all BigQuery schema fields exist
-    for f in SCHEMA:
-        if f.name not in final_df.columns:
-            final_df[f.name] = None
+    # --- Step 4b: Insert new dataset record into Data Set table ---
+    # You may need to adjust how you get user_id depending on your auth system
+    from fastapi import Request, Depends
+    from fastapi.security import OAuth2PasswordBearer
+    # user_id is now received from the frontend form
+    DATASET_TABLE_ID = "pivotal-canto-466205-p6.intent_inference.Data sets"
+    dataset_row = [{
+        "dataset_id": new_dataset_id,
+        "Client_id": user_id,
+        "num of rows": len(df)
+    }]
+    # Convert to DataFrame and upload
+    dataset_df = pd.DataFrame(dataset_row)
+    dataset_json = dataset_df.to_json(orient="records", lines=True)
+    dataset_schema = [
+        bigquery.SchemaField("dataset_id", "INTEGER", mode="NULLABLE"),
+        bigquery.SchemaField("Client_id", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("num of rows", "INTEGER", mode="NULLABLE"),
+    ]
+    try:
+        dataset_job_config = bigquery.LoadJobConfig(
+            source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+            schema=dataset_schema,
+            write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+        )
+        dataset_load_job = bq_client.load_table_from_file(
+            BytesIO(dataset_json.encode("utf-8")),
+            DATASET_TABLE_ID,
+            job_config=dataset_job_config,
+        )
+        dataset_load_job.result()
+        print(f"Added dataset_id={new_dataset_id} for user_id={user_id} to Data sets table")
+    except Exception as e:
+        print(f"Failed to add to Data sets table:", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add dataset record: {e}"
+        )
 
-    # Convert to JSON
-    json_data = final_df.to_json(orient="records", lines=True)
+    # --- Step 5: Convert to JSON ---
+    try:
+        json_data = df.to_json(orient="records", lines=True)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to serialize data: {e}"
+        )
 
     # --- Upload to BigQuery ---
     try:
@@ -146,4 +171,4 @@ async def upload_csvs(files: list[UploadFile] = File(...)):
     # Optional local store
     storage.set_baskets(final_df.to_dict(orient="records"))
 
-    return UploadResult(rows=len(final_df), columns=len(final_df.columns))
+    return UploadResult(rows=len(df), columns=len(df.columns))

@@ -25,15 +25,31 @@ export default function Visualizations() {
         className="rounded-2xl shadow-lg border-4 border-[#a259e6] bg-[#23283a]/80 p-6"
         style={{ boxShadow: "0 8px 32px 0 rgba(162, 89, 230, 0.25)" }}
       >
-        <iframe
-          width="900" // Increased width for better viewing
-          height="600" // Increased height for better viewing
-          src={lookerStudioSrc} // ⬅️ Use the correctly formatted URL
+        {/* <iframe
+          width="900"
+          height="600"
+          src="https://lookerstudio.google.com/embed/reporting/94a32404-94cf-4ad7-9323-60baa3e9b8e7/page/GAcaF"
           frameBorder="0"
           style={{ border: 0, borderRadius: "1rem", background: "#23283a" }}
           allowFullScreen
           sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        ></iframe> */}
+        <iframe
+          width="900"
+          height="550"
+          src="https://lookerstudio.google.com/embed/reporting/5841b56f-c70e-4aba-8bbb-49c8bcd2457f/page/GPoaF"
+          frameBorder="0"
+          style={{ border: 0 }}
+          allowFullScreen
+          sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         ></iframe>
+        <div className="mt-4 text-center text-[#b0b3b8] text-sm">
+          <span>
+            <b>Tip:</b> To open Looker Studio and draw your own charts, click
+            the <b>Looker Studio</b> text at the bottom right of the 
+            report.
+          </span>
+        </div>
       </div>
     </div>
   );

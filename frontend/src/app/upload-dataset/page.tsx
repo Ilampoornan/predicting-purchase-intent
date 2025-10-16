@@ -1,6 +1,7 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
-import Papa from "papaparse";
+import React, { useEffect } from "react";
+import { useRef, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -17,92 +18,68 @@ const EXPECTED_SCHEMAS: Record<string, string[]> = {
 };
 
 export default function UploadDataset() {
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, FileInfo>>({});
-  const [status, setStatus] = useState("");
-  const [progress, setProgress] = useState(0);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number>(0);
+  const [status, setStatus] = useState<string>("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [uploadComplete, setUploadComplete] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [complete, setComplete] = useState(false);
 
-  // Get user from Supabase
+  // Restore upload state from localStorage on mount
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUserId(data?.user?.id || null);
     };
     getUser();
+    // Restore upload state
+    const saved = localStorage.getItem("uploadState");
+    if (saved) {
+      const { fileName, progress, status, uploadComplete } = JSON.parse(saved);
+      setFileName(fileName);
+      setProgress(progress);
+      setStatus(status);
+      setUploadComplete(uploadComplete);
+    }
   }, []);
 
-  // Validate columns in CSV
-  const validateCSV = (file: File): Promise<{ valid: boolean; type?: string; error?: string }> => {
-    return new Promise((resolve) => {
-      Papa.parse(file, {
-        header: true,
-        preview: 1,
-        complete: (results) => {
-          const header = results.meta.fields || [];
-          for (const [type, expectedCols] of Object.entries(EXPECTED_SCHEMAS)) {
-            const allMatch = expectedCols.every((col) => header.includes(col));
-            if (allMatch) return resolve({ valid: true, type });
-          }
-
-          // Find closest expected schema for help message
-          const closestType = Object.entries(EXPECTED_SCHEMAS).find(([_, cols]) => {
-            const overlap = cols.filter((c) => header.includes(c)).length;
-            return overlap > 0;
-          });
-
-          resolve({
-            valid: false,
-            error: closestType
-              ? `❌ Column mismatch! Your CSV headers are: [${header.join(", ")}]. Expected for ${closestType[0]}.csv → [${closestType[1].join(", ")}].
-👉 Please rename columns or upload the correct CSV file.`
-              : `❌ Unknown structure. Columns found: [${header.join(", ")}]. Expected one of: orders.csv, order_products.csv, products.csv.`,
-          });
-        },
-      });
-    });
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
   };
 
   const handleFile = async (file: File) => {
-    setStatus("Checking file structure...");
-    const check = await validateCSV(file);
-
-    if (!check.valid) {
-      setStatus(check.error || "Invalid file.");
-      return;
-    }
-
-    setUploadedFiles((prev) => ({
-      ...prev,
-      [check.type!]: { file, valid: true },
-    }));
-    setStatus(`✅ ${check.type} file validated successfully. Please upload the next file.`);
-  };
-
-  const handleUpload = async () => {
-    if (!userId) {
-      setStatus("❌ User not authenticated. Please log in first.");
-      return;
-    }
-
-    const missingFiles = Object.keys(EXPECTED_SCHEMAS).filter(
-      (key) => !uploadedFiles[key]?.valid
+    setFileName(file.name);
+    setStatus("Uploading...");
+    setProgress(0);
+    // Save state to localStorage
+    localStorage.setItem(
+      "uploadState",
+      JSON.stringify({
+        fileName: file.name,
+        progress: 0,
+        status: "Uploading...",
+        uploadComplete: false,
+      })
     );
-    if (missingFiles.length > 0) {
-      setStatus(`⚠️ Please upload these missing files: ${missingFiles.join(", ")}.`);
+    if (!userId) {
+      setStatus("User not authenticated. Please log in.");
+      setProgress(0);
+      localStorage.removeItem("uploadState");
+      console.log("DEBUG: userId is not set");
       return;
     }
-
-    setUploading(true);
-    setStatus("Uploading all CSVs to backend...");
-    setProgress(40);
-
+    console.log("DEBUG: userId before upload", userId);
     const formData = new FormData();
-    Object.values(uploadedFiles).forEach(({ file }) => formData.append("files", file));
+    formData.append("file", file);
     formData.append("user_id", userId);
-
+    // Log FormData keys for debugging
+    for (let pair of formData.entries()) {
+      console.log(`FormData field: ${pair[0]} = ${pair[1]}`);
+    }
     try {
       const res = await fetch("http://localhost:8000/upload", {
         method: "POST",
@@ -111,17 +88,29 @@ export default function UploadDataset() {
 
       if (res.ok) {
         const data = await res.json();
+        setStatus(
+          `Upload complete! Rows: ${data.rows}, Columns: ${data.columns}`
+        );
         setProgress(100);
-        setStatus(`✅ Upload complete! Rows: ${data.rows}, Columns: ${data.columns}`);
-        setComplete(true);
+        setUploadComplete(true);
+        localStorage.setItem(
+          "uploadState",
+          JSON.stringify({
+            fileName: file.name,
+            progress: 100,
+            status: `Upload complete! Rows: ${data.rows}, Columns: ${data.columns}`,
+            uploadComplete: true,
+          })
+        );
       } else {
-        setStatus("❌ Upload failed. Please try again.");
+        setStatus("Upload failed.");
+        setProgress(0);
+        localStorage.removeItem("uploadState");
       }
     } catch (err) {
-      console.error(err);
-      setStatus("❌ Upload failed (network error).");
-    } finally {
-      setUploading(false);
+      setStatus("Upload failed.");
+      setProgress(0);
+      localStorage.removeItem("uploadState");
     }
   };
 
@@ -144,15 +133,25 @@ export default function UploadDataset() {
         </h2>
 
         <div
-          className="border-2 border-dashed border-[#a259e6] rounded-xl p-6 text-center cursor-pointer mb-4 hover:bg-[#3c1a5b]/30 transition"
-          onClick={() => fileInput.current?.click()}
+          className="border-2 border-dashed border-[#a259e6] rounded-xl flex flex-col items-center justify-center p-8 mb-6 cursor-pointer hover:bg-[#3c1a5b]/40 transition backdrop-blur-md bg-[#23283a]/60"
+          style={{
+            boxShadow: "0 4px 16px 0 rgba(162, 89, 230, 0.10)",
+            border: "2px dashed #a259e6",
+            ...(uploadComplete ? { opacity: 0.5, pointerEvents: "none" } : {}),
+          }}
+          onDrop={uploadComplete ? undefined : handleDrop}
+          onDragOver={uploadComplete ? undefined : (e) => e.preventDefault()}
+          onClick={
+            uploadComplete ? undefined : () => fileInput.current?.click()
+          }
         >
           <input
             type="file"
             ref={fileInput}
             className="hidden"
-            onChange={handleFileInput}
-            accept=".csv"
+            onChange={handleChange}
+            accept=".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+            disabled={uploadComplete}
           />
           <Image src="/cloud.png" alt="Upload" width={48} height={48} />
           <p className="text-[#00e6e6] font-medium mt-2">
@@ -208,6 +207,20 @@ export default function UploadDataset() {
             {status}
           </div>
         </div>
+        {uploadComplete && (
+          <button
+            className="mt-6 w-full py-2 rounded-lg bg-[#a259e6] text-white font-semibold hover:bg-[#7c3aed] transition"
+            onClick={() => {
+              setFileName(null);
+              setProgress(0);
+              setStatus("");
+              setUploadComplete(false);
+              localStorage.removeItem("uploadState");
+            }}
+          >
+            Upload a New Dataset
+          </button>
+        )}
       </div>
     </div>
   );

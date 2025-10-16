@@ -1,7 +1,13 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from app.routes.upload import router as upload_router
+from app.routes.rfm import router as rfm_router
+# from app.routes.process import router as process_router
 from app.routes.intent import router as intent_router
 # from app.routes.powerbi import router as powerbi_router
 
@@ -20,7 +26,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Register routers
+# Register routers
 app.include_router(upload_router)
+app.include_router(rfm_router)
+# app.include_router(process_router)
 app.include_router(intent_router)
 # app.include_router(powerbi_router)
