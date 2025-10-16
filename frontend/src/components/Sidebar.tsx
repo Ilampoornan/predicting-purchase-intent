@@ -34,8 +34,8 @@ const sidebarItems = [
     icon: <SparklesIcon className="h-5 w-5" />,
   },
   {
-    label: "Insights & Suggestions",
-    href: "/insights-suggestions",
+    label: "Insights",
+    href: "/insights",
     icon: <LightBulbIcon className="h-5 w-5" />,
   },
   {
