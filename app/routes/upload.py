@@ -12,25 +12,7 @@ router = APIRouter()
 bq_client = bigquery.Client()
 TABLE_ID = "pivotal-canto-466205-p6.intent_inference.Orders"
 
-
-def parse_products_column(value):
-    """Convert various 'products' formats to list."""
-    if pd.isna(value) or value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    value = str(value).strip()
-    if not value:
-        return []
-    if value.startswith("[") and value.endswith("]"):
-        try:
-            return ast.literal_eval(value)
-        except Exception:
-            pass
-    return [item.strip() for item in value.split(",") if item.strip()]
-
-
-# ✅ Define schema fields (only these will be kept)
+# BigQuery schema (keep as is)
 SCHEMA = [
     bigquery.SchemaField("order_id", "INTEGER", mode="NULLABLE"),
     bigquery.SchemaField("user_id", "INTEGER", mode="NULLABLE"),
@@ -61,40 +43,58 @@ async def upload_csv(file: UploadFile = File(...), user_id: str = Form(None)):
     if not file.filename or not file.filename.endswith(".csv"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file type. Only CSV files are allowed."
+            detail="Please upload exactly 3 CSV files: orders, order_products, and products."
         )
 
-    # --- Step 2: Read file ---
+    dfs = {}
     try:
-        content = await file.read()
-        df = pd.read_csv(BytesIO(content))
+        for file in files:
+            if not file.filename.endswith(".csv"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid file type for {file.filename}. Only CSVs are allowed."
+                )
 
-        # ✅ Keep only schema-defined columns
-        allowed_columns = [f.name for f in SCHEMA]
-        df = df[[c for c in df.columns if c in allowed_columns]]
+            content = await file.read()
+            df = pd.read_csv(BytesIO(content))
 
-        # Clean numeric columns
-        for col in ["order_id", "user_id"]:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-                df[col] = df[col].apply(lambda x: int(x) if pd.notnull(x) else None)
+            # Detect which file is which by its columns
+            cols = set(df.columns)
+            if {"order_id", "user_id", "order_date", "Total cost"} <= cols:
+                dfs["orders"] = df
+            elif {"order_id", "product_id"} <= cols:
+                dfs["order_products"] = df
+            elif {"product_id", "product_name"} <= cols:
+                dfs["products"] = df
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Unknown schema in file {file.filename}"
+                )
 
-        # Convert products column
-        if "products" in df.columns:
-            df["products"] = df["products"].apply(parse_products_column)
+        # --- Ensure all files present ---
+        for key in ["orders", "order_products", "products"]:
+            if key not in dfs:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Missing {key}.csv file."
+                )
 
-        # Ensure all schema fields exist (even if missing in CSV)
-        for col in allowed_columns:
-            if col not in df.columns:
-                df[col] = None
+        # --- Merge ---
+        merged = dfs["order_products"].merge(dfs["products"], on="product_id", how="left")
+        grouped = merged.groupby("order_id")["product_name"].apply(list).reset_index()
+
+        # Join with orders table
+        final_df = dfs["orders"].merge(grouped, on="order_id", how="left")
+
+        # Rename and clean
+        final_df.rename(columns={"product_name": "products"}, inplace=True)
+        final_df["products"] = final_df["products"].apply(lambda x: x if isinstance(x, list) else [])
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Could not read CSV file: {e}"
-        )
+        raise HTTPException(status_code=400, detail=f"Error merging files: {e}")
 
-    # --- Step 3: Fetch last dataset_id from BigQuery ---
+    # --- Get next dataset_id ---
     try:
         query = f"SELECT MAX(dataset_id) AS last_id FROM {TABLE_ID}"
         query_job = bq_client.query(query)
@@ -102,13 +102,9 @@ async def upload_csv(file: UploadFile = File(...), user_id: str = Form(None)):
         last_id = next(result).last_id or 0
         new_dataset_id = int(last_id) + 1
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch last dataset_id: {e}"
-        )
+        raise HTTPException(500, f"Failed to fetch last dataset_id: {e}")
 
-    # --- Step 4: Assign new dataset_id ---
-    df["dataset_id"] = new_dataset_id
+    final_df["dataset_id"] = new_dataset_id
 
     # --- Step 4b: Insert new dataset record into Data Set table ---
     # You may need to adjust how you get user_id depending on your auth system
@@ -158,32 +154,21 @@ async def upload_csv(file: UploadFile = File(...), user_id: str = Form(None)):
             detail=f"Failed to serialize data: {e}"
         )
 
-    # --- Step 6: Upload to BigQuery ---
+    # --- Upload to BigQuery ---
     try:
         job_config = bigquery.LoadJobConfig(
             source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
             schema=SCHEMA,
             write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
         )
-
         load_job = bq_client.load_table_from_file(
-            BytesIO(json_data.encode("utf-8")),
-            TABLE_ID,
-            job_config=job_config,
+            BytesIO(json_data.encode("utf-8")), TABLE_ID, job_config=job_config
         )
         load_job.result()
-
-        print(f"✅ Uploaded {len(df)} rows to {TABLE_ID} with dataset_id={new_dataset_id}")
-
     except Exception as e:
-        print("❌ BigQuery upload failed:", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload to BigQuery: {e}"
-        )
+        raise HTTPException(500, f"BigQuery upload failed: {e}")
 
-    # --- Step 7: Store locally (optional) ---
-    records = df.to_dict(orient="records")
-    storage.set_baskets(records)
+    # Optional local store
+    storage.set_baskets(final_df.to_dict(orient="records"))
 
     return UploadResult(rows=len(df), columns=len(df.columns))
