@@ -30,7 +30,7 @@ export default function Home() {
         <div
           className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch"
           style={{
-            backgroundImage: "url('/wallpaper.png')",
+            backgroundImage: "url('/image.png')",
             backgroundSize: "cover",
             backgroundPosition: "center",
             borderRadius: "1rem",
@@ -39,7 +39,7 @@ export default function Home() {
         >
           <div className=" rounded-2xl p-6 shadow flex flex-row justify-between min-h-[160px] col-span-2">
             <div className="flex flex-col justify-between">
-              <div className="text-5xl font-extrabold text-[#00e6e6] mb-2">
+              <div className="text-5xl font-extrabold text-[#ffffff] mb-2">
                 {today.toLocaleDateString(undefined, { weekday: "long" })}
               </div>
               <div className="text-lg text-[#b0b3b8] mb-1">

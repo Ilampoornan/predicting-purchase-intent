@@ -44,6 +44,16 @@ export default function InsightsSuggestions() {
     }
   }, []);
 
+  // Looker Studio dynamic dataset id for Rule Mining
+  const dataset_id_value = 1;
+  const parameterId = "dataset_id";
+  const reportId = "5841b56f-c70e-4aba-8bbb-49c8bcd2457f";
+  const pageId = "GPoaF";
+  const paramsObject: Record<string, string> = {};
+  paramsObject[parameterId] = dataset_id_value.toString();
+  const encodedParams = encodeURIComponent(JSON.stringify(paramsObject));
+  const lookerStudioSrc = `https://lookerstudio.google.com/embed/reporting/${reportId}/page/${pageId}?params=${encodedParams}`;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c] py-8">
       <h2 className="text-3xl font-bold text-[#a259e6] mb-8">Insights</h2>
@@ -114,7 +124,7 @@ export default function InsightsSuggestions() {
           <iframe
             width="100%"
             height="220"
-            src="https://lookerstudio.google.com/embed/reporting/5841b56f-c70e-4aba-8bbb-49c8bcd2457f/page/GPoaF"
+            src={lookerStudioSrc}
             allowFullScreen
             sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
           ></iframe>
