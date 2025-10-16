@@ -16,14 +16,21 @@ export default function Visualizations() {
           sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         ></iframe> */}
         <iframe
-          width="600"
-          height="450"
+          width="900"
+          height="550"
           src="https://lookerstudio.google.com/embed/reporting/5841b56f-c70e-4aba-8bbb-49c8bcd2457f/page/GPoaF"
           frameBorder="0"
           style={{ border: 0 }}
           allowFullScreen
           sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         ></iframe>
+        <div className="mt-4 text-center text-[#b0b3b8] text-sm">
+          <span>
+            <b>Tip:</b> To open Looker Studio and draw your own charts, click
+            the <b>Looker Studio</b> text at the bottom right of the 
+            report.
+          </span>
+        </div>
       </div>
     </div>
   );
