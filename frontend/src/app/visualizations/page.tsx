@@ -1,14 +1,13 @@
 export default function Visualizations() {
-
   // const dataset_id_value = 1; // Value for the Looker Studio Parameter
-  // const parameterId = "dataset_id"; // 
+  // const parameterId = "dataset_id"; //
 
   // const reportId = "5841b56f-c70e-4aba-8bbb-49c8bcd2457f";
   // const pageId = "GAcaF";
 
   // // 1. Create the JSON object mapping the Parameter ID to its value
   // const paramsObject = {};
-  // paramsObject[parameterId] = dataset_id_value.toString(); 
+  // paramsObject[parameterId] = dataset_id_value.toString();
 
   // 2. Stringify and URL-encode the JSON object for the 'params' URL argument
   // const encodedParams = encodeURIComponent(JSON.stringify(paramsObject));
@@ -23,10 +22,20 @@ export default function Visualizations() {
         className="rounded-2xl shadow-lg border-4 border-[#a259e6] bg-[#23283a]/80 p-6"
         style={{ boxShadow: "0 8px 32px 0 rgba(162, 89, 230, 0.25)" }}
       >
-        <iframe
+        {/* <iframe
           width="850"
           height="500"
           src="https://lookerstudio.google.com/embed/reporting/5e0871d0-a3bf-4bc5-ab0a-a50812e001d1/page/c5HbF"
+          frameBorder="0"
+          style={{ border: 0, borderRadius: "1rem", background: "#23283a" }}
+          allowFullScreen
+          sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        ></iframe> */}
+
+        <iframe
+          width="850"
+          height="600"
+          src="https://lookerstudio.google.com/embed/reporting/9a33ca61-f281-4741-9008-5bf157ba6e13/page/1p5bF"
           frameBorder="0"
           style={{ border: 0, borderRadius: "1rem", background: "#23283a" }}
           allowFullScreen
