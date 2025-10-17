@@ -1,10 +1,7 @@
-"""Data preparation helpers.
-
-We read from BigQuery instead of local CSV to reflect production warehouse access.
-Filtering by category/product helps isolate interpretable time series.
-"""
 
 from typing import Optional
+from google.oauth2 import service_account
+
 
 import pandas as pd
 
@@ -37,31 +34,22 @@ def fetch_data_from_bigquery(category: Optional[str] = None,
     pd.DataFrame
         DataFrame with columns Date, Category, Product_Name, Quantity, Unit_Price, Total_Price
     """
-    if bigquery is None and client is None:
-        raise RuntimeError('google-cloud-bigquery is not installed or client not provided')
+    key_path = r"C:\Users\raguk\Downloads\Document from Ilam.json"
+    credentials = service_account.Credentials.from_service_account_file(key_path)
 
-    if client is None:
-        client = bigquery.Client(project="pivotal-canto-466205-p6-g8")
+    client = bigquery.Client(credentials=credentials, project="pivotal-canto-466205-p6")
 
-    query = (
-        """
-        SELECT Date, Category, Product_Name, Quantity, Unit_Price, Total_Price
-        FROM `pivotal-canto-466205-p6-g8.inference_dataset.predictive_analysis`
+    query = """
+        SELECT `Date`, `Product Category`, `Product Name`, `Units Sold`, `Unit Price`, `Total Revenue`, `Region`, `Payment Method`
+        FROM `pivotal-canto-466205-p6.intent_inference.predictive_analysis`
         WHERE 1=1
-        """
-    )
+    """
 
     if category:
-        # Note: for production, prefer parameterized queries to avoid SQL injection.
-        query += f" AND Category = '{category}'"
+        query += f" AND `Product Category` = '{category}'"
     if product:
-        query += f" AND Product_Name = '{product}'"
+        query += f" AND `Product Name` = '{product}'"
 
-    query += " ORDER BY Date"
+    query += " ORDER BY `Date`"
     if limit:
         query += f" LIMIT {int(limit)}"
-
-    df = client.query(query).to_dataframe()
-    df["Date"] = pd.to_datetime(df["Date"])
-    df = df.sort_values("Date")
-    return df
