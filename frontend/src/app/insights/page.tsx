@@ -1,5 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
+const RfmPieChart = dynamic(() => import("@/components/RfmPieChart"), {
+  ssr: false,
+});
 import { supabase } from "@/lib/supabaseClient";
 
 export default function InsightsSuggestions() {
@@ -58,7 +62,7 @@ export default function InsightsSuggestions() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c] py-8">
       <h2 className="text-3xl font-bold text-[#a259e6] mb-8">Insights</h2>
       <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* RFM Cluster Table */}
+        {/* RFM Cluster Table + Pie Chart */}
         <div className="bg-[#1a0824]/80 rounded-xl p-6 shadow-lg border border-[#a259e6]/40">
           <h3 className="text-xl font-semibold text-[#00e6e6] mb-4">
             RFM Segments
@@ -75,7 +79,7 @@ export default function InsightsSuggestions() {
                   className="opacity-25"
                   cx="12"
                   cy="12"
-                  r="10"
+                  r="5"
                   stroke="#00e6e6"
                   strokeWidth="4"
                 ></circle>
@@ -90,30 +94,35 @@ export default function InsightsSuggestions() {
           ) : rfmClusters.length === 0 ? (
             <div className="text-[#b0b3b8]">No RFM cluster data available.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm text-left text-[#b0b3b8]">
-                <thead className="text-xs uppercase bg-[#23283a] text-[#00e6e6]">
-                  <tr>
-                    <th className="px-4 py-2">Cluster</th>
-                    <th className="px-4 py-2">Avg Recency</th>
-                    <th className="px-4 py-2">Avg Frequency</th>
-                    <th className="px-4 py-2">Avg Monetary</th>
-                    <th className="px-4 py-2">Num Customers</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rfmClusters.map((c, idx) => (
-                    <tr key={idx} className="border-b border-[#a259e6]/20">
-                      <td className="px-4 py-2 font-bold">{c.Cluster}</td>
-                      <td className="px-4 py-2">{c.Recency.toFixed(1)}</td>
-                      <td className="px-4 py-2">{c.Frequency.toFixed(1)}</td>
-                      <td className="px-4 py-2">{c.Monetary.toFixed(2)}</td>
-                      <td className="px-4 py-2">{c.Num_Customers}</td>
+            <>
+              <div className="mb-6">
+                <RfmPieChart clusters={rfmClusters} />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm text-left text-[#b0b3b8]">
+                  <thead className="text-xs uppercase bg-[#23283a] text-[#00e6e6]">
+                    <tr>
+                      <th className="px-4 py-2">Cluster</th>
+                      <th className="px-4 py-2">Avg Recency</th>
+                      <th className="px-4 py-2">Avg Frequency</th>
+                      <th className="px-4 py-2">Avg Monetary</th>
+                      <th className="px-4 py-2">Num Customers</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {rfmClusters.map((c, idx) => (
+                      <tr key={idx} className="border-b border-[#a259e6]/20">
+                        <td className="px-4 py-2 font-bold">{c.Cluster}</td>
+                        <td className="px-4 py-2">{c.Recency.toFixed(1)}</td>
+                        <td className="px-4 py-2">{c.Frequency.toFixed(1)}</td>
+                        <td className="px-4 py-2">{c.Monetary.toFixed(2)}</td>
+                        <td className="px-4 py-2">{c.Num_Customers}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
         {/* Rule Mining Results */}
@@ -123,7 +132,7 @@ export default function InsightsSuggestions() {
           </h3>
           <iframe
             width="100%"
-            height="220"
+            height="450"
             src={lookerStudioSrc}
             allowFullScreen
             sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
