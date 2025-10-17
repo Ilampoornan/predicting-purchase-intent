@@ -3,7 +3,6 @@ import React, { useEffect } from "react";
 import { useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
-import { supabase } from "@/lib/supabaseClient";
 
 interface FileInfo {
   file: File;
@@ -12,7 +11,7 @@ interface FileInfo {
 }
 
 const EXPECTED_SCHEMAS: Record<string, string[]> = {
-  orders: ["order_id", "user_id", "order_date", "Total cost"],
+  orders: ["order_id", "user_id", "order_date", "Total_cost"],
   order_products: ["order_id", "product_id"],
   products: ["product_id", "product_name"],
 };
@@ -26,6 +25,15 @@ export default function UploadDataset() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [complete, setComplete] = useState(false);
+
+  // Track uploaded files and their validation state
+  const [uploadedFiles, setUploadedFiles] = useState<
+    Record<string, FileInfo | null>
+  >(() => {
+    const init: Record<string, FileInfo | null> = {};
+    Object.keys(EXPECTED_SCHEMAS).forEach((k) => (init[k] = null));
+    return init;
+  });
 
   // Restore upload state from localStorage on mount
   useEffect(() => {
@@ -120,6 +128,68 @@ export default function UploadDataset() {
     }
   };
 
+  // Handler for file input change / drop
+  const handleChange = async (
+    e: React.ChangeEvent<HTMLInputElement> | File
+  ) => {
+    let file: File | null = null;
+    if ((e as any).target) {
+      const ev = e as React.ChangeEvent<HTMLInputElement>;
+      if (!ev.target.files || !ev.target.files[0]) return;
+      file = ev.target.files[0];
+    } else {
+      file = e as File;
+    }
+
+    if (!file) return;
+
+    // decide which expected file this is: prefer filename match, otherwise first missing
+    const name = file.name.toLowerCase();
+    const matchedType = Object.keys(EXPECTED_SCHEMAS).find((t) =>
+      name.includes(t)
+    );
+    const fallback =
+      Object.keys(EXPECTED_SCHEMAS).find((t) => !uploadedFiles[t]?.valid) ||
+      Object.keys(EXPECTED_SCHEMAS)[0];
+    const type = matchedType || fallback;
+
+    // Try to validate CSV header quickly (only CSV supported here for validation)
+    let valid = true;
+    let error: string | undefined;
+    try {
+      const text = await file.text();
+      const headerLine = text.split(/\r?\n/)[0] || "";
+      const cols = headerLine.split(",").map((c) => c.trim());
+      const expected = EXPECTED_SCHEMAS[type] || [];
+      const missing = expected.filter((c) => !cols.includes(c));
+      if (missing.length > 0) {
+        valid = false;
+        error = `Missing columns: ${missing.join(", ")}`;
+      }
+    } catch (err) {
+      valid = false;
+      error = "Unable to read file for validation";
+    }
+
+    setUploadedFiles((prev) => ({ ...prev, [type]: { file, valid, error } }));
+  };
+
+  // Upload all validated files by reusing handleFile for each
+  const handleUpload = async () => {
+    setUploading(true);
+    const types = Object.keys(EXPECTED_SCHEMAS);
+    for (const t of types) {
+      const info = uploadedFiles[t];
+      if (info && info.file && info.valid) {
+        // await single file upload
+        // eslint-disable-next-line no-await-in-loop
+        await handleFile(info.file);
+      }
+    }
+    setUploading(false);
+    setComplete(true);
+  };
+
   // Determine next file user should upload
   const nextFileType = Object.keys(EXPECTED_SCHEMAS).find(
     (key) => !uploadedFiles[key]?.valid
@@ -127,7 +197,7 @@ export default function UploadDataset() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c]">
-      <div className="rounded-2xl shadow-lg backdrop-blur-md bg-gradient-to-br from-[#3c1a5b]/80 to-[#2d0b3a]/80 border border-[#a259e6]/40 p-10 w-full max-w-2xl relative">
+      <div className="rounded-2xl shadow-lg backdrop-blur-md bg-gradient-to-br from-[#3c1a5b]/80 to-[#2d0b3a]/80 border border-[#a259e6]/40 p-10 w-full max-w-2xl relative mt-10">
         <h2 className="text-2xl font-bold mb-6 text-[#00e6e6] text-center">
           Upload Dataset (Step by Step)
         </h2>
@@ -181,7 +251,9 @@ export default function UploadDataset() {
                   Columns: {cols.join(", ")}
                 </span>
               </span>
-              <span>{uploadedFiles[type]?.valid ? "✅ Validated" : "⬜ Pending"}</span>
+              <span>
+                {uploadedFiles[type]?.valid ? "✅ Validated" : "⬜ Pending"}
+              </span>
             </div>
           ))}
         </div>
