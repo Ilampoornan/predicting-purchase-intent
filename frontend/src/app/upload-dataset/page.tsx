@@ -11,7 +11,7 @@ interface FileInfo {
 }
 
 const EXPECTED_SCHEMAS: Record<string, string[]> = {
-  orders: ["order_id", "user_id", "order_date", "Total_cost"],
+  orders: ["order_id", "user_id", "order_date", "Total cost"],
   order_products: ["order_id", "product_id"],
   products: ["product_id", "product_name"],
 };
@@ -96,9 +96,7 @@ export default function UploadDataset() {
 
       if (res.ok) {
         const data = await res.json();
-        setStatus(
-          `Upload complete! Rows: ${data.rows}, Columns: ${data.columns}`
-        );
+        setStatus(`Upload complete! `);
         setProgress(100);
         setUploadComplete(true);
         localStorage.setItem(
@@ -252,7 +250,7 @@ export default function UploadDataset() {
                 </span>
               </span>
               <span>
-                {uploadedFiles[type]?.valid ? "✅ Validated" : "⬜ Pending"}
+                {uploadedFiles[type]?.valid ? " Validated" : "Pending"}
               </span>
             </div>
           ))}
@@ -263,9 +261,15 @@ export default function UploadDataset() {
           <button
             className="w-full py-2 rounded-lg bg-[#a259e6] text-white font-semibold hover:bg-[#7c3aed] transition disabled:opacity-50"
             onClick={handleUpload}
-            disabled={uploading || complete}
+            disabled={
+              uploading ||
+              complete ||
+              !Object.keys(EXPECTED_SCHEMAS).every(
+                (type) => uploadedFiles[type]?.valid
+              )
+            }
           >
-            {uploading ? "Uploading..." : complete ? "Done ✅" : "Upload All"}
+            {uploading ? "Uploading..." : complete ? "Done " : "Upload All"}
           </button>
 
           <div className="w-full h-2 bg-[#3c1a5b] rounded-full mt-3">

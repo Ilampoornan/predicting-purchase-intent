@@ -31,10 +31,7 @@ export default function InsightsSuggestions() {
     },
   ]);
   const [input, setInput] = useState("");
-  const [rfmClusters, setRfmClusters] = useState<any[]>(() => {
-    const saved = localStorage.getItem("rfmClusters");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [rfmClusters, setRfmClusters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Forecast data
@@ -54,19 +51,11 @@ export default function InsightsSuggestions() {
         .then((res) => res.json())
         .then((data) => {
           setRfmClusters(data.clusters || []);
-          localStorage.setItem(
-            "rfmClusters",
-            JSON.stringify(data.clusters || [])
-          );
           setLoading(false);
         })
         .catch(() => setLoading(false));
     };
-    if (!localStorage.getItem("rfmClusters")) {
-      fetchRfm();
-    } else {
-      setLoading(false);
-    }
+    fetchRfm();
   }, []);
 
   // Load forecast.json once
@@ -93,8 +82,7 @@ export default function InsightsSuggestions() {
   );
 
   // Helper for image file names
-  const formatCategoryForFilename = (cat: string) =>
-    cat.replace(/\s+/g, "_");
+  const formatCategoryForFilename = (cat: string) => cat.replace(/\s+/g, "_");
 
   // 👇 NEW — handle dropdown change with simulated delay
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -174,7 +162,7 @@ export default function InsightsSuggestions() {
           )}
         </div>
 
-        {/* Rule Mining (unchanged) */}
+        {/* Rule Mining  */}
         <div className="bg-[#1a0824]/80 rounded-xl p-6 shadow-lg border border-[#a259e6]/40">
           <h3 className="text-xl font-semibold text-[#00e6e6] mb-4">
             Rule Mining
@@ -268,7 +256,9 @@ export default function InsightsSuggestions() {
                   </table>
                 </div>
               ) : (
-                <div className="text-[#b0b3b8]">No forecast data available.</div>
+                <div className="text-[#b0b3b8]">
+                  No forecast data available.
+                </div>
               )}
 
               {/* ACF / PACF Images */}
@@ -297,18 +287,6 @@ export default function InsightsSuggestions() {
             </>
           )}
         </div>
-
-        {/* Churn Prediction Placeholder */}
-        {/* <div className="bg-[#1a0824]/80 rounded-xl p-6 shadow-lg border border-[#a259e6]/40">
-          <h3 className="text-xl font-semibold text-[#00e6e6] mb-4">
-            Churn Prediction
-          </h3>
-          <div className="flex flex-col items-center justify-center h-48 text-[#b0b3b8]">
-            <span className="text-lg">
-              [Churn prediction results or chart here]
-            </span>
-          </div>
-        </div> */}
       </div>
     </div>
   );
