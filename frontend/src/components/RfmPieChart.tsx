@@ -6,7 +6,6 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function RfmPieChart({ clusters }: { clusters: any[] }) {
-  // Prepare data for pie chart
   const labels = clusters.map((c) => `Cluster ${c.Cluster}`);
   const data = clusters.map((c) => c.Num_Customers);
   const backgroundColors = [

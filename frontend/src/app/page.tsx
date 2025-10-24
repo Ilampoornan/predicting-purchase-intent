@@ -10,14 +10,12 @@ import {
 import { BanknotesIcon } from "@heroicons/react/24/solid";
 
 export default function Home() {
-  // Get today's date
   const today = new Date();
   const currentDay = today.getDate();
-  const currentMonth = today.getMonth(); // 0-indexed
+  const currentMonth = today.getMonth(); 
   const currentYear = today.getFullYear();
 
-  // For this demo, calendar is always October 2025
-  const calendarMonth = 9; // October (0-indexed)
+  const calendarMonth = 9; 
   const calendarYear = 2025;
 
   const highlightToday =
@@ -26,7 +24,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c] flex flex-col">
       <main className="flex-1 flex flex-col gap-8 px-8 pb-8 bg-gradient-to-br from-[#0a0e1a] via-[#1a1e2a] to-[#23283a] mt-5">
-        {/* Top Bar: Date, Weather, and Quick Info */}
         <div
           className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch"
           style={{
@@ -81,7 +78,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-          {/* Calendar Card */}
           <div className=" rounded-2xl p-6 shadow flex flex-col min-h-[160px]">
             <div className="text-lg font-bold text-[#00e6e6] mb-2">
               Calendar
@@ -128,7 +124,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-        {/* Dashboard Cards Section */}
         <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link href="/upload-dataset" className="block col-span-1">
             <DashboardCard
@@ -196,7 +191,6 @@ function DashboardCard({
           {desc}
         </span>
       </div>
-      {/* Decorative blurred glow */}
       <div className="absolute right-0 top-0 w-32 h-32 bg-[#a259e6] opacity-20 rounded-full blur-2xl pointer-events-none group-hover:opacity-40 transition-all duration-300" />
     </div>
   );

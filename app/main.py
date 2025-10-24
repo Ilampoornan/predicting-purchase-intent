@@ -12,6 +12,7 @@ from app.routes.intent import router as intent_router
 # from app.routes.powerbi import router as powerbi_router
 from app.routes.diagnostics import router as diagnostics_router 
 from app.routes.forecast import router as forecast_router
+from app.routes.orders import router as orders_router
 
 
 app = FastAPI(title="Basket Intent Demo")
@@ -36,3 +37,4 @@ app.include_router(intent_router)
 # app.include_router(powerbi_router)
 app.include_router(diagnostics_router)
 app.include_router(forecast_router)
+app.include_router(orders_router)

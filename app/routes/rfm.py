@@ -9,10 +9,8 @@ router = APIRouter()
 
 @router.get("/rfm-insights")
 def get_rfm_insights(user_id: str = Query(...)):
-    # Load and process data
     from google.cloud import bigquery
     client = bigquery.Client()
-    # Get latest dataset_id for this user from Data sets table
     dataset_table = "pivotal-canto-466205-p6.intent_inference.Data sets"
     dataset_query = f"""
         SELECT dataset_id FROM `{dataset_table}`
@@ -29,7 +27,6 @@ def get_rfm_insights(user_id: str = Query(...)):
         return JSONResponse(content={"error": "No dataset found for this user."}, status_code=404)
     dataset_id = dataset_row.dataset_id
 
-    # Query Orders for this dataset_id
     table_path = "pivotal-canto-466205-p6.intent_inference.Orders"
     query = f"""
         SELECT `user_id`, `order_date`, `order_id`, `Total cost`
@@ -42,7 +39,6 @@ def get_rfm_insights(user_id: str = Query(...)):
     )
     data = client.query(query, job_config=job_config).to_dataframe()
     data = data.drop_duplicates()
-    # Robust date parsing: let pandas infer the format, coerce errors to NaT
     data['order_date'] = pd.to_datetime(data['order_date'], errors='coerce')
     max_date = data['order_date'].max()
     rfm = data.groupby('user_id').agg({
@@ -51,7 +47,6 @@ def get_rfm_insights(user_id: str = Query(...)):
         'Total cost': 'sum'                                 # Monetary
     })
     rfm.rename(columns={'order_date': 'Recency', 'order_id': 'Frequency', 'Total cost': 'Monetary'}, inplace=True)
-    # Drop any rows with NaN values before clustering
     rfm = rfm.dropna()
     k = 4
     if len(rfm) < k:
@@ -66,6 +61,5 @@ def get_rfm_insights(user_id: str = Query(...)):
         'Monetary': 'mean'
     })
     cluster_summary['Num_Customers'] = rfm.groupby('Cluster').size()
-    # Convert to dict for JSON response
     summary_dict = cluster_summary.reset_index().to_dict(orient='records')
     return JSONResponse(content={"clusters": summary_dict})
