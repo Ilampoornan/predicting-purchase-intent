@@ -13,7 +13,6 @@ export default function InferIntentsPage() {
     return null;
   });
   const [showFullWarning, setShowFullWarning] = useState(false);
-  // countdown is seconds left, but we store end timestamp in localStorage
   const [countdown, setCountdown] = useState<number | null>(() => {
     if (typeof window !== "undefined") {
       const end = localStorage.getItem("infer_countdown_end");
@@ -24,7 +23,6 @@ export default function InferIntentsPage() {
     }
     return null;
   });
-  // Track the absolute end timestamp so the effect starts immediately when set
   const [countdownEnd, setCountdownEnd] = useState<number | null>(() => {
     if (typeof window !== "undefined") {
       const end = localStorage.getItem("infer_countdown_end");
@@ -53,13 +51,52 @@ export default function InferIntentsPage() {
   const [sampleResults, setSampleResults] = useState<
     Array<{ product: string; intent: string }>
   >([]);
-  const [samplePage, setSamplePage] = useState(0); // 0-based page index
-  const SAMPLE_PAGE_SIZE = 10;
-  // Simulation refs for dummy inference
-  const DUMMY_MODE = true; // set to true to run locally without backend
-  const simTimerRef = useRef<number | null>(null);
-  const simBatchRef = useRef<number>(0);
-  const simTotalRef = useRef<number>(0);
+  const [samplePage, setSamplePage] = useState(0); 
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [dataError, setDataError] = useState("");
+
+  const [startRequested, setStartRequested] = useState(false);
+  useEffect(() => {
+    let batchInterval: number | undefined;
+    let progressTimeout: number | undefined;
+    async function fetchOrdersWithProgress() {
+      setLoadingData(true);
+      setDataError("");
+      setProgress({ batch: 0, total: 4 });
+      let currentBatch = 0;
+      batchInterval = window.setInterval(() => {
+        currentBatch++;
+        setProgress({ batch: currentBatch, total: 4 });
+        if (currentBatch === 4) {
+          window.clearInterval(batchInterval);
+        }
+      }, 2500)
+      try {
+        const res = await fetch("http://localhost:8000/orders?dataset_id=1");
+        if (!res.ok) throw new Error("Failed to fetch orders");
+        const data = await res.json();
+        setOrders(data);
+      } catch (err: any) {
+        setDataError(err.message || "Unknown error");
+      } finally {
+        progressTimeout = window.setTimeout(() => {
+          setLoadingData(false);
+          setProgress(null);
+          setStartRequested(false);
+          setRunning(false); 
+        }, 10000);
+        window.clearInterval(batchInterval);
+      }
+    }
+    if (selected === "sample" && startRequested) {
+      fetchOrdersWithProgress();
+    }
+    return () => {
+      if (batchInterval) window.clearInterval(batchInterval);
+      if (progressTimeout) window.clearTimeout(progressTimeout);
+    };
+  }, [selected, startRequested]);
 
   const options = [
     {
@@ -114,8 +151,6 @@ export default function InferIntentsPage() {
     },
   ];
 
-  // Countdown effect using end timestamp
-  // Runs on mount and whenever `countdown` changes so an interval starts immediately
   useEffect(() => {
     let timer: number | undefined;
     const end = countdownEnd;
@@ -141,7 +176,6 @@ export default function InferIntentsPage() {
     };
   }, [countdownEnd]);
 
-  // Persist selected, running, and progress
   useEffect(() => {
     if (typeof window !== "undefined") {
       if (selected) {
@@ -168,11 +202,9 @@ export default function InferIntentsPage() {
     }
   }, [progress]);
 
-  // Restore EventSource if running on mount
   useEffect(() => {
     if (running && !eventSourceRef.current && selected) {
-      // Reconnect EventSource
-      const dataset = "my_dataset"; // TODO: replace with actual dataset name or user input
+      const dataset = "Orders";
       const sample_size = selected === "sample" ? 200 : 0;
       const url = `http://localhost:8000/intent/infer/stream?dataset=${dataset}${
         sample_size ? `&sample_size=${sample_size}` : ""
@@ -205,10 +237,8 @@ export default function InferIntentsPage() {
         eventSourceRef.current = null;
       };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Format countdown as HH:MM:SS
   function formatCountdown(sec: number) {
     const h = Math.floor(sec / 3600)
       .toString()
@@ -220,20 +250,16 @@ export default function InferIntentsPage() {
     return `${h}:${m}:${s}`;
   }
 
-  // Stop the countdown (cancel the pending full-dataset wait)
   function stopCountdown() {
     setCountdown(null);
     if (typeof window !== "undefined") {
       localStorage.removeItem("infer_countdown_end");
     }
-    // return to initial selection state
     setSelected(null);
     setCountdownEnd(null);
   }
 
-  // Stop the running inference (close EventSource and clear state)
   function stopInference() {
-    // Stop backend EventSource if present
     if (eventSourceRef.current) {
       try {
         eventSourceRef.current.close();
@@ -242,15 +268,6 @@ export default function InferIntentsPage() {
       }
       eventSourceRef.current = null;
     }
-    // Stop simulated timer if running
-    if (simTimerRef.current) {
-      window.clearInterval(simTimerRef.current);
-      simTimerRef.current = null;
-    }
-    // Reset simulation state
-    simBatchRef.current = 0;
-    simTotalRef.current = 0;
-    // Reset UI state back to initial
     setRunning(false);
     setProgress(null);
     setError(null);
@@ -260,99 +277,9 @@ export default function InferIntentsPage() {
       localStorage.removeItem("infer_progress");
       localStorage.removeItem("infer_countdown_end");
     }
-    // clear any sample results shown
     setSampleResults([]);
   }
 
-  // Start a local dummy inference simulation
-  function startDummyInference(mode: "full" | "sample") {
-    // Clear prior sample results and reset view
-    setSampleResults([]);
-    setSamplePage(0);
-    // Configure simulation: total batches and interval
-    const total = mode === "sample" ? 4 : 30; // sample: 4 batches
-    const intervalMs = mode === "sample" ? Math.floor(10000 / 4) : 1200; // sample total ~10s
-    simTotalRef.current = total;
-    simBatchRef.current = 0;
-    setProgress({ batch: 0, total });
-    setRunning(true);
-    if (typeof window !== "undefined")
-      localStorage.setItem("infer_running", "true");
-
-    simTimerRef.current = window.setInterval(() => {
-      simBatchRef.current += 1;
-      setProgress({ batch: simBatchRef.current, total });
-      if (typeof window !== "undefined") {
-        localStorage.setItem(
-          "infer_progress",
-          JSON.stringify({ batch: simBatchRef.current, total })
-        );
-      }
-      // When complete
-      if (simBatchRef.current >= total) {
-        if (simTimerRef.current) {
-          window.clearInterval(simTimerRef.current);
-          simTimerRef.current = null;
-        }
-        setRunning(false);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("infer_running", "false");
-        }
-        // If this was a sample run, generate sample results and display them
-        if (mode === "sample") {
-          const products = [
-            "'Ketchup', 'Shaving Cream', 'Light Bulbs'",
-            "'Ice Cream', 'Milk', 'Olive Oil', 'Bread', 'Potatoes'",
-            "'Spinach",
-            "'Tissues', 'Mustard'",
-            "'Dish Soap'",
-            "'Toothpaste', 'Chicken'",
-            "'Honey', 'BBQ Sauce', 'Soda', 'Olive Oil', 'Garden Hose'",
-            "'Syrup', 'Trash Cans', 'Pancake Mix', 'Water', 'Mayonnaise'",
-            "'Insect Repellent'",
-            "'Soap', 'Baby Wipes', 'Soda'",
-            "'Extension Cords', 'Soda', 'Water', 'Garden Hose', 'Cleaning Spray'",
-            "'Tea', 'Paper Towels', 'Spinach'",
-            "'Salmon', 'Shaving Cream'",
-            "'Trash Bags', 'Apple', 'Mop', 'Hair Gel'",
-            "'Razors', 'Laundry Detergent', 'Beef'",
-            "'Cereal', 'Vinegar', 'Bath Towels'",
-            "'Air Freshener', 'Feminine Hygiene Products'",
-            "'Power Strips', 'Honey', 'Ketchup', 'Tea', 'Shampoo'",
-            "'Mustard', 'Dustpan'",
-            "'Coffee' ",
-          ];
-          const intents = [
-            "Household restock ",
-            " Family dinner prep",
-            "Smoothie prep",
-            "Picnic prep",
-            "Dishwashing",
-            "Meal prep",
-            "Backyard BBQ",
-            "Weekend brunch prep",
-            " Outdoor camping",
-            "Household refreshments",
-            "Outdoor party prep",
-            "Healthy snacking",
-            "Dinner prep",
-            "Household maintenance",
-            "Meal prep and grooming",
-            "Household restocking",
-            "Personal care refresh",
-            "general groceries",
-            "Hot dog meal",
-          ];
-          // Generate 200 sample rows
-          const rows = Array.from({ length: 200 }).map((_, i) => ({
-            product: products[i % products.length],
-            intent: intents[i % intents.length],
-          }));
-          setSampleResults(rows);
-        }
-      }
-    }, intervalMs);
-  }
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#000000] via-[#080645] to-[#260c2c] p-8">
       <div className="max-w-4xl mx-auto w-full">
@@ -362,7 +289,6 @@ export default function InferIntentsPage() {
         <p className="text-[#b0b3b8] text-base mb-10 text-center">
           Choose how you want to infer customer intents from your dataset.
         </p>
-        {/* Prominent countdown banner when waiting for full dataset availability */}
         {countdown !== null && countdown > 0 && (
           <div className="mb-6 p-4 rounded-lg bg-[#25102b] border border-[#a259e6]/40 text-center">
             <div className="text-sm text-[#b0b3b8]">
@@ -417,77 +343,53 @@ export default function InferIntentsPage() {
           ))}
         </div>
         <div className="flex flex-col items-center mt-4 gap-4">
-          <button
-            className={`px-8 py-3 rounded-lg font-bold text-base shadow transition ${
-              selected && !running
-                ? "bg-[#00e6e6] text-[#23283a] hover:bg-[#00b3b3]"
-                : "bg-[#23283a]/60 text-[#b0b3b8] cursor-not-allowed"
-            }`}
-            disabled={!selected || running}
-            onClick={() => {
-              if (selected === "full" && countdown !== null && countdown > 0) {
-                // Should not happen due to button disable, but guard anyway
-                return;
-              }
-              setProgress(null);
-              setError(null);
-              // Dummy mode: simulate locally
-              if (DUMMY_MODE) {
-                startDummyInference(selected as "full" | "sample");
-                return;
-              }
-              // Real backend path (unchanged)
-              setRunning(true);
-              if (typeof window !== "undefined") {
-                localStorage.setItem("infer_running", "true");
-              }
-              // Example: dataset param is hardcoded, sample_size based on selection
-              const dataset = "my_dataset"; // TODO: replace with actual dataset name or user input
-              const sample_size = selected === "sample" ? 200 : 0;
-              const url = `http://localhost:8000/intent/infer/stream?dataset=${dataset}${
-                sample_size ? `&sample_size=${sample_size}` : ""
-              }`;
-              const es = new EventSource(url);
-              eventSourceRef.current = es;
-              es.onmessage = (event) => {
-                try {
-                  const data = JSON.parse(event.data);
-                  if (data.type === "batch") {
-                    setProgress({ batch: data.batch, total: data.total });
-                  } else if (data.type === "done") {
-                    setRunning(false);
-                    es.close();
-                    eventSourceRef.current = null;
-                  } else if (data.type === "error") {
-                    setError(data.text || "Unknown error");
-                    setRunning(false);
-                    es.close();
-                    eventSourceRef.current = null;
-                  }
-                } catch (e) {
-                  // ignore
-                }
-              };
-              es.onerror = () => {
-                setError("Connection error");
-                setRunning(false);
-                es.close();
-                eventSourceRef.current = null;
-              };
-            }}
-          >
-            {running ? "Running..." : "Start"}
-          </button>
-          {/* Show stop countdown button when waiting for the 1-hour hold */}
-          {/* {countdown !== null && countdown > 0 && (
+          {!running && (
             <button
-              className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
-              onClick={() => stopCountdown()}
+              className={`px-8 py-3 rounded-lg font-bold text-base shadow transition ${
+                selected
+                  ? "bg-[#00e6e6] text-[#23283a] hover:bg-[#00b3b3]"
+                  : "bg-[#23283a]/60 text-[#b0b3b8] cursor-not-allowed"
+              }`}
+              disabled={!selected}
+              onClick={() => {
+                if (
+                  selected === "full" &&
+                  countdown !== null &&
+                  countdown > 0
+                ) {
+                  return;
+                }
+                setProgress(null);
+                setError(null);
+                setRunning(true);
+                setStartRequested(true);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("infer_running", "true");
+                }
+              }}
             >
-              Cancel Wait
+              Start
             </button>
-          )} */}
-          {/* Show stop inference button when running */}
+          )}
+
+          {selected === "sample" && progress && (
+            <div className="w-full max-w-md mt-2">
+              <div className="flex justify-between text-xs text-[#b0b3b8] mb-1">
+                <span>
+                  {progress.batch} out of {progress.total} batches processed
+                </span>
+              </div>
+              <div className="w-full bg-[#23283a]/60 rounded-full h-4">
+                <div
+                  className="bg-[#00e6e6] h-4 rounded-full transition-all"
+                  style={{
+                    width: `${(progress.batch / progress.total) * 100}%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+          )}
+
           {running && (
             <button
               className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
@@ -496,7 +398,6 @@ export default function InferIntentsPage() {
               Stop Inference
             </button>
           )}
-          {/* Modal for Full Dataset warning */}
           {showFullWarning && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
               <div className="bg-[#1a0824] rounded-2xl p-8 max-w-sm w-full shadow-2xl border-2 border-[#00e6e6] flex flex-col items-center">
@@ -532,8 +433,8 @@ export default function InferIntentsPage() {
                         );
                         setCountdownEnd(end);
                       }
-                      setCountdown(3600); // 1 hour in seconds
-                      setSelected(null); // force re-select after countdown
+                      setCountdown(3600); 
+                      setSelected(null); 
                     }}
                     disabled={countdown !== null && countdown > 0}
                   >
@@ -543,34 +444,10 @@ export default function InferIntentsPage() {
               </div>
             </div>
           )}
-          {progress && (
-            <div className="w-full max-w-md mt-2">
-              <div className="flex justify-between text-xs text-[#b0b3b8] mb-1">
-                <span>
-                  Progress: Batch {progress.batch} / {progress.total}
-                </span>
-              </div>
-              <div className="w-full bg-[#23283a]/60 rounded-full h-4">
-                <div
-                  className="bg-[#00e6e6] h-4 rounded-full transition-all"
-                  style={{
-                    width: `${(progress.batch / progress.total) * 100}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-          )}
-          {error && <div className="text-red-400 mt-2">{error}</div>}
-
-          {sampleResults && sampleResults.length > 0 && (
+          {selected === "sample" && orders.length > 0 && (
             <div className="w-full max-w-6xl mt-6 mx-auto bg-[#0f0b13] p-6 rounded-xl border border-[#44475a]">
               <h4 className="text-lg font-semibold text-[#a259e6] mb-3">
-                Showing {samplePage * SAMPLE_PAGE_SIZE + 1} -{" "}
-                {Math.min(
-                  (samplePage + 1) * SAMPLE_PAGE_SIZE,
-                  sampleResults.length
-                )}{" "}
-                of {sampleResults.length} Results
+                Showing {Math.min(200, orders.length)} Sample Orders
               </h4>
               <div className="overflow-x-auto">
                 <table
@@ -583,10 +460,10 @@ export default function InferIntentsPage() {
                   <thead>
                     <tr className="bg-[#1a0824]">
                       <th className="px-6 py-3 font-semibold text-[#00e6e6] text-left">
-                        #
+                        Order ID
                       </th>
                       <th className="px-6 py-3 font-semibold text-[#a259e6] text-left">
-                        Product
+                        Products
                       </th>
                       <th className="px-6 py-3 font-semibold text-[#00e6e6] text-left">
                         Inferred Intent
@@ -594,14 +471,11 @@ export default function InferIntentsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sampleResults
-                      .slice(
-                        samplePage * SAMPLE_PAGE_SIZE,
-                        (samplePage + 1) * SAMPLE_PAGE_SIZE
-                      )
-                      .map((r, idx) => (
+                    {orders
+                      .slice(samplePage * 10, samplePage * 10 + 10)
+                      .map((order, idx) => (
                         <tr
-                          key={samplePage * SAMPLE_PAGE_SIZE + idx}
+                          key={order.order_id || idx}
                           className={
                             idx % 2 === 0
                               ? "bg-[#23283a]/60"
@@ -609,13 +483,42 @@ export default function InferIntentsPage() {
                           }
                         >
                           <td className="px-6 py-3 text-[#00e6e6] font-medium">
-                            {samplePage * SAMPLE_PAGE_SIZE + idx + 1}
+                            {order.order_id}
                           </td>
                           <td className="px-6 py-3 text-[#b0b3b8]">
-                            {r.product}
+                            {(() => {
+                              if (Array.isArray(order.products)) {
+                                return order.products.join(", ");
+                              }
+                              if (typeof order.products === "string") {
+                                try {
+                                  const arr = JSON.parse(order.products);
+                                  if (Array.isArray(arr)) {
+                                    return arr.join(", ");
+                                  }
+                                } catch {}
+                                if (
+                                  order.products.startsWith("[") &&
+                                  order.products.endsWith("]")
+                                ) {
+                                  return order.products
+                                    .slice(1, -1)
+                                    .split(",")
+                                    .map((s: string) => s.trim())
+                                    .join(", ");
+                                }
+                                return order.products;
+                              }
+                              return String(order.products);
+                            })()}
                           </td>
                           <td className="px-6 py-3 text-[#a259e6]">
-                            {r.intent}
+                            {typeof order.intent === "string"
+                              ? order.intent
+                                  .replace(/^'+|'+$/g, "")
+                                  .replace(/^\*+|\*+$/g, "")
+                                  .trim()
+                              : order.intent}
                           </td>
                         </tr>
                       ))}
@@ -631,20 +534,22 @@ export default function InferIntentsPage() {
                 >
                   <span className="text-2xl">&#8592;</span> Prev
                 </button>
+                <span className="text-[#b0b3b8] font-mono">
+                  Page {samplePage + 1} of{" "}
+                  {Math.ceil(Math.min(orders.length, 200) / 10)}
+                </span>
                 <button
                   className="px-4 py-2 rounded-lg bg-[#23283a] text-[#b0b3b8] font-semibold border border-[#44475a] hover:bg-[#23283a]/80 transition"
                   onClick={() =>
                     setSamplePage((p) =>
                       Math.min(
-                        Math.floor(
-                          (sampleResults.length - 1) / SAMPLE_PAGE_SIZE
-                        ),
+                        Math.ceil(Math.min(orders.length, 200) / 10) - 1,
                         p + 1
                       )
                     )
                   }
                   disabled={
-                    (samplePage + 1) * SAMPLE_PAGE_SIZE >= sampleResults.length
+                    (samplePage + 1) * 10 >= Math.min(orders.length, 200)
                   }
                   aria-label="Next 10"
                 >
